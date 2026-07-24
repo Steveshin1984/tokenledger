@@ -34,6 +34,9 @@ export default function Home() {
       <section className="rounded-xl border border-black/10 p-6 dark:border-white/15">
         <p className="text-sm text-zinc-500">이번 달 총 비용</p>
         <p className="mt-1 text-4xl font-semibold">${monthlyTotal.toFixed(2)}</p>
+        <p className="mt-2 text-xs text-zinc-500">
+          💡 Claude Pro/Max 구독자라면 이 금액은 실제 청구액이 아니라, API 기준으로 환산한 &ldquo;사용량 참고값&rdquo;이에요.
+        </p>
       </section>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
