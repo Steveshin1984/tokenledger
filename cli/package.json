@@ -3,8 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "bin": {
+    "tokenledger": "./src/cli.ts"
+  },
   "scripts": {
-    "parse": "tsx src/parse-jsonl.ts"
+    "cli": "tsx src/cli.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
