@@ -50,4 +50,6 @@ OpenAI/OpenRouter 연동, 알림 설정은 각각 `docs/api-keys-setup.md`, `doc
 
 ## 피드백
 
-베타 테스트 중 문제가 있거나 의견이 있으면 알려주세요. (연락 방법은 추후 안내)
+베타 테스트 중 문제가 있거나 의견이 있으면 아래 이메일로 알려주세요.
+
+📧 changhoshin84@gmail.com
