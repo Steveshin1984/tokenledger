@@ -15,7 +15,7 @@
 **요구사항**: Node.js 22.5 이상.
 
 ```bash
-git clone <이 저장소 주소>
+git clone https://github.com/Steveshin1984/tokenledger.git
 cd tokenledger/cli
 npm install
 npm run build
