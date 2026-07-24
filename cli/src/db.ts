@@ -70,3 +70,28 @@ export function insertUsageEvent(db: DatabaseSync, e: UsageEvent): boolean {
   );
   return result.changes > 0;
 }
+
+// OpenAI/OpenRouter처럼 "오늘 누적 사용량" 같이 값이 계속 바뀌는 데이터용.
+// 같은 request_id면 최신 값으로 덮어쓴다 (Claude Code처럼 확정된 과거 기록에는 쓰지 않음).
+export function upsertUsageEvent(db: DatabaseSync, e: UsageEvent): void {
+  const stmt = db.prepare(`
+    insert or replace into usage_events
+      (request_id, tool, model, session_id, project_path, timestamp,
+       input_tokens, output_tokens, cache_1h_tokens, cache_5m_tokens, cache_read_tokens, cost_usd)
+    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(
+    e.request_id,
+    e.tool,
+    e.model,
+    e.session_id,
+    e.project_path,
+    e.timestamp,
+    e.input_tokens,
+    e.output_tokens,
+    e.cache_1h_tokens,
+    e.cache_5m_tokens,
+    e.cache_read_tokens,
+    e.cost_usd
+  );
+}
