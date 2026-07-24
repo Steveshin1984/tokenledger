@@ -3,11 +3,20 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "description": "내 AI 에이전트들이 어디에 얼마 썼는지 보여주는 로컬 사용량/비용 추적 CLI",
   "bin": {
-    "tokenledger": "./src/cli.ts"
+    "tokenledger": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
   },
   "scripts": {
-    "cli": "tsx src/cli.ts"
+    "cli": "tsx src/cli.ts",
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
