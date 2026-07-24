@@ -62,8 +62,29 @@ export function openDb(): DatabaseSync {
       error_retry_chains integer not null default 0,
       flags text not null default '[]'
     );
+
+    create table if not exists alert_log (
+      alert_type text not null,
+      alert_key text not null,
+      sent_at text not null,
+      primary key (alert_type, alert_key)
+    );
   `);
   return db;
+}
+
+// 같은 (alert_type, alert_key) 조합으로 이미 알림을 보냈는지 확인 (하루에 중복 알림 방지용).
+export function hasAlertBeenSent(db: DatabaseSync, alertType: string, alertKey: string): boolean {
+  const row = db.prepare("select 1 from alert_log where alert_type = ? and alert_key = ?").get(alertType, alertKey);
+  return row != null;
+}
+
+export function recordAlertSent(db: DatabaseSync, alertType: string, alertKey: string): void {
+  db.prepare("insert or replace into alert_log (alert_type, alert_key, sent_at) values (?, ?, ?)").run(
+    alertType,
+    alertKey,
+    new Date().toISOString()
+  );
 }
 
 // 중복이면 무시하고 false, 새로 들어갔으면 true 반환
