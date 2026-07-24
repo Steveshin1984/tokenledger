@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSessionEvents } from "@/lib/db";
+import { getSessionEvents, getWasteSignalForSession, WASTE_FLAG_LABELS } from "@/lib/db";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleString("ko-KR", {
@@ -28,6 +28,8 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
   const totalCost = events.reduce((sum, e) => sum + e.cost_usd, 0);
   const { project_path } = events[0];
+  const waste = getWasteSignalForSession(id);
+  const wasteFlags: string[] = waste ? JSON.parse(waste.flags) : [];
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-12 sm:px-10">
@@ -42,6 +44,18 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         <p className="mt-1 text-sm text-zinc-500">
           {events.length}개 턴 · 총 비용 ${totalCost.toFixed(4)}
         </p>
+        {wasteFlags.length > 0 && (
+          <div className="mt-2 flex gap-1.5">
+            {wasteFlags.map((f) => (
+              <span
+                key={f}
+                className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+              >
+                ⚠️ {WASTE_FLAG_LABELS[f] ?? f}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <table className="w-full text-left text-sm">

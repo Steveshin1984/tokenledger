@@ -2,6 +2,7 @@ import { collectClaudeCodeEvents } from "../collectors/claude-code.js";
 import { collectOpenAiEvents } from "../collectors/openai.js";
 import { collectOpenRouterEvents } from "../collectors/openrouter.js";
 import { dbPath, insertUsageEvent, openDb, upsertUsageEvent } from "../db.js";
+import { detectClaudeCodeWaste } from "../waste-detection.js";
 
 export async function runInit(): Promise<void> {
   const db = openDb();
@@ -31,6 +32,10 @@ export async function runInit(): Promise<void> {
     upsertUsageEvent(db, event);
   }
   if (openRouterEvents.length > 0) console.log(`  오늘(${openRouterEvents[0].session_id}) 사용량 저장/갱신`);
+
+  console.log("낭비 감지 분석 중...");
+  const flaggedCount = detectClaudeCodeWaste(db);
+  console.log(`  낭비 의심 세션 ${flaggedCount}개 발견`);
 
   const totalRow = db.prepare("select count(*) as count, coalesce(sum(cost_usd), 0) as cost from usage_events").get() as {
     count: number;

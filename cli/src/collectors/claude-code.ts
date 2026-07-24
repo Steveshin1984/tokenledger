@@ -89,3 +89,90 @@ export function collectClaudeCodeEvents(): UsageEvent[] {
   }
   return events;
 }
+
+export interface SessionToolActivity {
+  editToolCalls: number;
+  errorRetryChains: number;
+}
+
+const EDIT_TOOL_NAMES = new Set(["Edit", "Write", "NotebookEdit"]);
+
+interface ToolCallRecord {
+  id: string;
+  name: string;
+  timestamp: string;
+  isError: boolean;
+}
+
+// 세션별로 "파일 수정 도구를 몇 번 썼는지"와 "에러 직후 같은 도구를 다시 부른 횟수"를 센다.
+// F4 낭비 감지(무산출 고비용 / 실패 재시도 체인)에 쓰인다.
+export function collectClaudeCodeToolActivity(): Map<string, SessionToolActivity> {
+  const root = join(homedir(), ".claude", "projects");
+  const files = findJsonlFiles(root);
+
+  const callsBySession = new Map<string, ToolCallRecord[]>();
+  const errorById = new Map<string, boolean>();
+
+  for (const file of files) {
+    let content: string;
+    try {
+      content = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+
+    for (const line of content.split("\n")) {
+      if (!line.trim()) continue;
+      let entry: any;
+      try {
+        entry = JSON.parse(line);
+      } catch {
+        continue;
+      }
+
+      const sessionId = entry.sessionId;
+      if (!sessionId) continue;
+
+      if (entry.type === "assistant") {
+        const content = entry.message?.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === "tool_use" && block.id && block.name) {
+              const arr = callsBySession.get(sessionId) ?? [];
+              arr.push({ id: block.id, name: block.name, timestamp: entry.timestamp ?? "", isError: false });
+              callsBySession.set(sessionId, arr);
+            }
+          }
+        }
+      } else if (entry.type === "user") {
+        const content = entry.message?.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === "tool_result" && block.tool_use_id) {
+              errorById.set(block.tool_use_id, block.is_error === true);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const result = new Map<string, SessionToolActivity>();
+
+  for (const [sessionId, calls] of callsBySession) {
+    for (const call of calls) call.isError = errorById.get(call.id) ?? false;
+    calls.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+    let editToolCalls = 0;
+    let errorRetryChains = 0;
+    for (let i = 0; i < calls.length; i++) {
+      if (EDIT_TOOL_NAMES.has(calls[i].name)) editToolCalls++;
+      if (calls[i].isError && calls[i + 1]?.name === calls[i].name) {
+        errorRetryChains++;
+      }
+    }
+    result.set(sessionId, { editToolCalls, errorRetryChains });
+  }
+
+  return result;
+}

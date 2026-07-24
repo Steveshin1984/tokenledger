@@ -45,6 +45,21 @@ export interface SessionSummary {
   ended_at: string;
 }
 
+export interface WasteSignalRow {
+  session_id: string;
+  tool: string;
+  project_path: string;
+  total_cost: number;
+  edit_tool_calls: number;
+  error_retry_chains: number;
+  flags: string; // JSON 배열 문자열
+}
+
+export const WASTE_FLAG_LABELS: Record<string, string> = {
+  no_output_high_cost: "무산출 고비용",
+  failed_retry_chain: "실패 재시도 체인",
+};
+
 // 읽기 전용으로 연다 — 대시보드는 CLI가 만든 DB를 보여주기만 함.
 function openReadonlyDb(): DatabaseSync {
   const path = join(homedir(), ".tokenledger", "data.db");
@@ -158,6 +173,26 @@ export function getSessionEvents(sessionId: string): UsageEventRow[] {
       .prepare("select * from usage_events where session_id = ? order by timestamp asc")
       .all(sessionId);
     return toPlainRows<UsageEventRow>(rows);
+  } finally {
+    db.close();
+  }
+}
+
+export function getWasteSignals(): WasteSignalRow[] {
+  const db = openReadonlyDb();
+  try {
+    const rows = db.prepare("select * from waste_signals order by total_cost desc").all();
+    return toPlainRows<WasteSignalRow>(rows);
+  } finally {
+    db.close();
+  }
+}
+
+export function getWasteSignalForSession(sessionId: string): WasteSignalRow | null {
+  const db = openReadonlyDb();
+  try {
+    const row = db.prepare("select * from waste_signals where session_id = ?").get(sessionId);
+    return row ? { ...(row as object) } as WasteSignalRow : null;
   } finally {
     db.close();
   }

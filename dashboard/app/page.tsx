@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { getCostByTool, getDailyTrend, getMonthlyTotal, getProjectSummaries } from "@/lib/db";
+import {
+  getCostByTool,
+  getDailyTrend,
+  getMonthlyTotal,
+  getProjectSummaries,
+  getWasteSignals,
+  WASTE_FLAG_LABELS,
+} from "@/lib/db";
 import { DailyTrendChart } from "./daily-trend-chart";
 import { ToolPieChart } from "./tool-pie-chart";
 
@@ -15,6 +22,7 @@ export default function Home() {
   const dailyTrend = getDailyTrend();
   const byTool = getCostByTool();
   const projects = getProjectSummaries();
+  const wasteSignals = getWasteSignals();
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-12 sm:px-10">
@@ -73,6 +81,42 @@ export default function Home() {
               ))}
             </tbody>
           </table>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-black/10 p-6 dark:border-white/15">
+        <h2 className="mb-1 font-medium">낭비 의심 세션</h2>
+        <p className="mb-3 text-xs text-zinc-500">
+          휴리스틱 기반 추정치예요 — "이상하니 한번 확인해보라"는 힌트로만 봐주세요.
+        </p>
+        {wasteSignals.length === 0 ? (
+          <p className="text-sm text-zinc-500">낭비 의심 세션이 없어요.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {wasteSignals.map((s) => {
+              const flags: string[] = JSON.parse(s.flags);
+              return (
+                <li key={s.session_id} className="flex items-center justify-between border-b border-black/5 py-2 text-sm dark:border-white/10">
+                  <div>
+                    <Link href={`/sessions/${s.session_id}`} className="text-blue-600 hover:underline dark:text-blue-400">
+                      {s.project_path}
+                    </Link>
+                    <div className="mt-0.5 flex gap-1.5">
+                      {flags.map((f) => (
+                        <span
+                          key={f}
+                          className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                        >
+                          {WASTE_FLAG_LABELS[f] ?? f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <span className="font-medium">${s.total_cost.toFixed(4)}</span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
     </div>

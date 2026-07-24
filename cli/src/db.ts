@@ -18,6 +18,16 @@ export interface UsageEvent {
   cost_usd: number;
 }
 
+export interface WasteSignal {
+  session_id: string;
+  tool: string;
+  project_path: string;
+  total_cost: number;
+  edit_tool_calls: number;
+  error_retry_chains: number;
+  flags: string[]; // 예: ["no_output_high_cost", "failed_retry_chain"]
+}
+
 export function dbPath(): string {
   return join(homedir(), ".tokenledger", "data.db");
 }
@@ -42,6 +52,16 @@ export function openDb(): DatabaseSync {
     );
     create index if not exists idx_usage_events_timestamp on usage_events(timestamp);
     create index if not exists idx_usage_events_session on usage_events(session_id);
+
+    create table if not exists waste_signals (
+      session_id text primary key,
+      tool text not null,
+      project_path text not null,
+      total_cost real not null default 0,
+      edit_tool_calls integer not null default 0,
+      error_retry_chains integer not null default 0,
+      flags text not null default '[]'
+    );
   `);
   return db;
 }
@@ -69,6 +89,28 @@ export function insertUsageEvent(db: DatabaseSync, e: UsageEvent): boolean {
     e.cost_usd
   );
   return result.changes > 0;
+}
+
+// tool 범위의 waste_signals를 통째로 지우고 다시 채운다 (매번 새로 계산되는 파생 데이터라서).
+export function replaceWasteSignals(db: DatabaseSync, tool: string, signals: WasteSignal[]): void {
+  db.prepare("delete from waste_signals where tool = ?").run(tool);
+  const stmt = db.prepare(`
+    insert into waste_signals
+      (session_id, tool, project_path, total_cost, edit_tool_calls, error_retry_chains, flags)
+    values (?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const s of signals) {
+    if (s.flags.length === 0) continue; // 아무 신호도 안 걸리면 저장 안 함
+    stmt.run(
+      s.session_id,
+      s.tool,
+      s.project_path,
+      s.total_cost,
+      s.edit_tool_calls,
+      s.error_retry_chains,
+      JSON.stringify(s.flags)
+    );
+  }
 }
 
 // OpenAI/OpenRouter처럼 "오늘 누적 사용량" 같이 값이 계속 바뀌는 데이터용.
